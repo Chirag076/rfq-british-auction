@@ -4,6 +4,15 @@ A simplified RFQ system where suppliers compete by bidding **down**, and
 activity near the close pushes the close out — up to a forced ceiling that
 never moves.
 
+**Live: https://rfq.evrrun.com**
+
+It runs on a free tier, so the first request after a quiet spell takes about a
+minute to wake the API — the page says so rather than spinning silently. The
+demo auction closes five minutes after the data is seeded, so press **Reset
+demo data** on the listing page for one that is about to close.
+
+Or run the whole thing locally:
+
 ```bash
 docker compose up --build
 ```
@@ -130,13 +139,15 @@ Refusing would throw away two minutes of bidding the buyer configured for.
 1. Push the repo, then **New Blueprint Instance** at
    [dashboard.render.com/blueprints](https://dashboard.render.com/blueprints)
    and point it at the repo. All three resources are created from the file.
-2. When the API finishes deploying, copy its public URL.
+2. When the API finishes deploying, copy its public URL. **Check it**: service
+   names are global, so a taken one gets a random suffix — this deployment
+   asked for `rfq-api` and was given `rfq-api-z4zb`.
 3. On the **rfq-web** service, set `VITE_API_BASE` to that URL and redeploy
    with **Clear build cache & deploy**.
 
 Step 3 cannot be skipped. Vite inlines `VITE_*` values into the bundle at build
 time, and Render does not expose one service's public URL to another service's
-environment, so the first build necessarily compiles in a placeholder.
+environment, so the first build necessarily compiles in a guess.
 
 The free tier shapes the demo in three ways worth knowing before you judge it:
 

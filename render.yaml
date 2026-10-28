@@ -8,9 +8,12 @@
 # One manual step after the first sync, and it cannot be avoided: the static
 # site needs the API's public URL at BUILD time (Vite inlines VITE_* values
 # into the bundle), and Render does not expose a service's public URL to
-# another service's environment. So the placeholder below has to be replaced
-# with the real API URL once Render has created it, then the site rebuilt.
-# See the deployment section of the README.
+# another service's environment.
+#
+# Worse, the URL is not predictable. Service names are global, so a taken name
+# gets a random suffix — this deployment asked for `rfq-api` and was given
+# `rfq-api-z4zb`. So VITE_API_BASE below has to be set to whatever URL Render
+# actually assigned, and the site rebuilt. See the README.
 
 databases:
   - name: rfq-db
@@ -47,10 +50,11 @@ services:
     buildCommand: cd frontend && npm ci && npm run build
     staticPublishPath: ./frontend/dist
     envVars:
-      # REPLACE after the first deploy with the API's real URL, then choose
-      # "Clear build cache & deploy" so the new value is compiled in.
+      # The URL Render assigned to rfq-api on this deployment. If the blueprint
+      # is ever synced into a fresh workspace this will differ, and the site
+      # needs "Clear build cache & deploy" after it is corrected.
       - key: VITE_API_BASE
-        value: https://rfq-api.onrender.com
+        value: https://rfq-api-z4zb.onrender.com
     routes:
       # Client-side routing: /rfq/:id is a React route, not a file on disk.
       # Render skips rewrite rules for paths that do exist, so /assets/* is
