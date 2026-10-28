@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { getAuction } from '../api.js';
 import { useAuctionSocket } from '../components/useAuctionSocket.js';
 import Countdown from '../components/Countdown.jsx';
+import Loading from '../components/Loading.jsx';
 import BidForm from '../components/BidForm.jsx';
 
 const money = (n) =>
@@ -34,7 +35,7 @@ export default function AuctionDetail() {
   useAuctionSocket(id, load);
 
   if (error) return <p className="state error">{error}</p>;
-  if (!rfq) return <p className="state">Loading…</p>;
+  if (!rfq) return <Loading />;
 
   const open = rfq.status === 'ACTIVE';
   const ceilingReached = new Date(rfq.bidCloseAt).getTime() >= new Date(rfq.forcedCloseAt).getTime();

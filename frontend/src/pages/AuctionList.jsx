@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { listAuctions } from '../api.js';
+import { listAuctions, resetDemo } from '../api.js';
 import { useAuctionSocket } from '../components/useAuctionSocket.js';
 import Countdown from '../components/Countdown.jsx';
+import Loading from '../components/Loading.jsx';
 
 const money = (n) =>
   n == null ? '—' : n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -27,6 +28,7 @@ function StatusPill({ status }) {
 export default function AuctionList() {
   const [rows, setRows] = useState(null);
   const [error, setError] = useState('');
+  const [resetting, setResetting] = useState(false);
 
   const load = useCallback(() => {
     listAuctions().then(setRows).catch((e) => setError(e.message));
@@ -35,8 +37,25 @@ export default function AuctionList() {
   useEffect(load, [load]);
   useAuctionSocket(null, load);
 
+  // The interesting auction closes five minutes after the data is seeded, which
+  // on a deployed instance means five minutes after the deploy. This puts a
+  // fresh one in front of whoever opens the link.
+  const reset = async () => {
+    if (!window.confirm('Replace all auctions with fresh demo data?')) return;
+    setResetting(true);
+    setError('');
+    try {
+      await resetDemo();
+      load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setResetting(false);
+    }
+  };
+
   if (error) return <p className="state error">{error}</p>;
-  if (!rows) return <p className="state">Loading…</p>;
+  if (!rows) return <Loading />;
 
   return (
     <>
@@ -48,9 +67,14 @@ export default function AuctionList() {
             clock, up to a forced ceiling that never moves.
           </p>
         </div>
-        <Link className="btn primary" to="/new">
-          New RFQ
-        </Link>
+        <div className="bar-actions">
+          <button className="btn" onClick={reset} disabled={resetting} type="button">
+            {resetting ? 'Resetting…' : 'Reset demo data'}
+          </button>
+          <Link className="btn primary" to="/new">
+            New RFQ
+          </Link>
+        </div>
       </div>
 
       {rows.length === 0 && <p className="state">No auctions yet. Create one to get started.</p>}

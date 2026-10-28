@@ -129,3 +129,9 @@ form .btn{margin-top:16px}
 .check input{width:auto;margin:2px 0 0;flex:none}
 .check em{display:block;font-style:normal;font-weight:400;font-size:13px;color:var(--soft);margin-top:3px}
 select:disabled,input:disabled{opacity:.5;cursor:not-allowed}
+
+/* Action group in the page header. Wraps rather than squashing on a phone. */
+.bar-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
+/* The "still waking up" note under a slow first load. */
+.state-note{display:block;max-width:46ch;margin:10px auto 0;font-size:13px;color:var(--soft);line-height:1.5}

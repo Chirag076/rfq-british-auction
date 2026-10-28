@@ -103,6 +103,10 @@ Refusing would throw away two minutes of bidding the buyer configured for.
   skewed clock moves real money in a real auction.
 - **The activity log is capped at 100 events** on the detail page, with no
   pagination.
+- **`POST /api/demo/reset` wipes the database and is unauthenticated.** It
+  exists so the hosted demo always has an auction about to close, since the
+  seed otherwise runs once at deploy time. In a real system it would sit behind
+  an admin role, or not ship.
 - **No proxy bidding, reserve prices or partial lots.**
 
 ## What I would do next
@@ -117,6 +121,33 @@ Refusing would throw away two minutes of bidding the buyer configured for.
    the first thing asked after a contested auction.
 
 ---
+
+## Deploying it
+
+`render.yaml` is a Render blueprint: Postgres, the API from
+`backend/Dockerfile`, and the React build as a static site.
+
+1. Push the repo, then **New Blueprint Instance** at
+   [dashboard.render.com/blueprints](https://dashboard.render.com/blueprints)
+   and point it at the repo. All three resources are created from the file.
+2. When the API finishes deploying, copy its public URL.
+3. On the **rfq-web** service, set `VITE_API_BASE` to that URL and redeploy
+   with **Clear build cache & deploy**.
+
+Step 3 cannot be skipped. Vite inlines `VITE_*` values into the bundle at build
+time, and Render does not expose one service's public URL to another service's
+environment, so the first build necessarily compiles in a placeholder.
+
+The free tier shapes the demo in three ways worth knowing before you judge it:
+
+- The API **sleeps after 15 minutes idle** and takes about a minute to wake.
+  The UI says so rather than spinning silently.
+- While it is asleep the closing sweep is not running, so an auction past its
+  close stays `ACTIVE` until the next request wakes the service — then closes
+  within ten seconds.
+- The seeded auction closes five minutes after the data is written, which on a
+  deployment means five minutes after the deploy. **Reset demo data** on the
+  listing page puts a fresh one in front of you.
 
 ## Running it
 
@@ -174,18 +205,21 @@ backend/
   src/bids/bids.service.ts     the locked transaction        ← and this
   src/rfq/rfq.service.ts       create, list, detail
   src/events/events.gateway.ts Socket.IO rooms per RFQ
+  src/demo/demo.seed.ts        the demo dataset, shared by all three callers
+  src/health/                  health check with a real query
   prisma/schema.prisma         four tables
-  prisma/seed.ts               a live auction closing in 5 minutes
+  prisma/seed.ts               CLI seed; the data lives in src/demo
   test/engine.spec.ts          27 tests
 frontend/
   src/pages/AuctionList.jsx    listing: lowest bid, status, countdown
   src/pages/AuctionDetail.jsx  ranking, config, activity log
   src/pages/CreateRfq.jsx      RFQ creation with the validation rules
-  src/components/              countdown, bid form, socket hook
+  src/components/              countdown, bid form, socket hook, loading state
 docs/
   architecture.md              HLD + diagram
   schema.md                    tables, indexes, and why
-docker-compose.yml
+docker-compose.yml             local: three containers
+render.yaml                    deploy: database, API, static site
 ```
 
 ## API
@@ -197,6 +231,8 @@ docker-compose.yml
 | `GET /api/rfqs/:id` | ranking, quote details, config, activity log |
 | `POST /api/rfqs/:id/bids` | submit a quote; may extend the auction |
 | `GET /api/suppliers` | the supplier list for the bid form |
+| `POST /api/demo/reset` | wipe and re-seed the demo data (see limitations) |
+| `GET /health` | liveness + a real `SELECT 1`, used by the platform health check |
 
 WebSocket: `watch`/`unwatch` an RFQ id; receives `auction:changed` for that
 auction and `auctions:changed` for the list.

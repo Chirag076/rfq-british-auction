@@ -6,6 +6,8 @@ import { EventsModule } from './events/events.module';
 import { RfqModule } from './rfq/rfq.module';
 import { BidsModule } from './bids/bids.module';
 import { AuctionModule } from './auction/auction.module';
+import { DemoModule } from './demo/demo.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -15,6 +17,8 @@ import { AuctionModule } from './auction/auction.module';
     RfqModule,
     BidsModule,
     AuctionModule,
+    DemoModule,
+    HealthModule,
   ],
 })
 export class AppModule {}

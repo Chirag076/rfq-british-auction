@@ -23,3 +23,4 @@ export const createAuction = (dto) =>
   request('/api/rfqs', { method: 'POST', body: JSON.stringify(dto) });
 export const submitBid = (rfqId, dto) =>
   request(`/api/rfqs/${rfqId}/bids`, { method: 'POST', body: JSON.stringify(dto) });
+export const resetDemo = () => request('/api/demo/reset', { method: 'POST' });
