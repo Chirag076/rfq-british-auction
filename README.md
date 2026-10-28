@@ -157,6 +157,11 @@ The free tier shapes the demo in three ways worth knowing before you judge it:
 docker compose up --build       # web :5173, api :4000, postgres :5432
 ```
 
+The api container runs `backend/docker-entrypoint.sh`, which pushes the schema
+and then starts the app; the app seeds itself only if the database is empty.
+That is the same start-up the deployed instance runs, so it is not a path that
+only production exercises.
+
 **Without Docker:**
 
 ```bash

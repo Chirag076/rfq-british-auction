@@ -30,9 +30,9 @@ services:
     # left off here rather than risking the ambiguity.
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
-    # Push the schema before the app boots, exactly as docker-compose does.
-    # The API seeds itself on first boot only if the database is empty.
-    dockerCommand: sh -c "npx prisma db push --skip-generate && node dist/main"
+    # No dockerCommand: the image's CMD runs backend/docker-entrypoint.sh,
+    # which pushes the schema and then starts the app. That is the same
+    # start-up docker-compose uses locally.
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL

@@ -4,8 +4,10 @@
 #   api   http://localhost:4000
 #   db    postgres on 5432
 #
-# The api container runs migrations and seeds before it starts, so a reviewer
-# gets a live auction closing in two minutes without running anything else.
+# The api container pushes the schema and seeds an empty database before it
+# serves anything, so a reviewer gets a live auction without running a second
+# command. It uses the image's own start-up script — the same one the deployed
+# instance runs, so the start path is not something only production exercises.
 services:
   db:
     image: postgres:16-alpine
@@ -35,7 +37,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    command: sh -c "npx prisma db push --skip-generate && npx ts-node prisma/seed.ts && node dist/main"
 
   web:
     build: ./frontend

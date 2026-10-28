@@ -1,0 +1,5 @@
+# The container entrypoint must keep Unix line endings. Checked out with CRLF
+# on Windows, `#!/bin/sh\r` makes the kernel look for an interpreter named
+# "/bin/sh\r" and the container dies with a "not found" that names a file that
+# is plainly right there.
+*.sh text eol=lf

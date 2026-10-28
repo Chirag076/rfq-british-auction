@@ -18,6 +18,11 @@ COPY src ./src
 COPY test ./test
 RUN npm run build
 
+# chmod here rather than relying on the checkout: a repo cloned on Windows
+# does not necessarily carry the executable bit.
+COPY docker-entrypoint.sh ./
+RUN chmod +x docker-entrypoint.sh
+
 ENV NODE_ENV=production
 EXPOSE 4000
-CMD ["node", "dist/main"]
+CMD ["./docker-entrypoint.sh"]
