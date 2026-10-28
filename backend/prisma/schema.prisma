@@ -1,0 +1,143 @@
+// RFQ with British-auction bidding.
+//
+// Four tables. The shape is driven by one question the brief asks repeatedly:
+// "why did this auction extend?" Every extension has to be explainable after
+// the fact, so the decision is recorded as an event rather than inferred from
+// a close time that has already moved.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// What kind of activity in the trigger window extends the auction.
+enum ExtensionTrigger {
+  /// Any new bid at all.
+  BID_RECEIVED
+  /// Any change in the ordering of suppliers.
+  ANY_RANK_CHANGE
+  /// Only a change of the lowest bidder (L1).
+  L1_CHANGE
+}
+
+enum AuctionStatus {
+  /// Created, bidding has not opened yet.
+  SCHEDULED
+  /// Open for bids.
+  ACTIVE
+  /// Reached its (possibly extended) close time naturally.
+  CLOSED
+  /// Hit the forced close ceiling with extensions still being triggered.
+  FORCE_CLOSED
+}
+
+enum EventType {
+  BID_PLACED
+  AUCTION_EXTENDED
+  /// A trigger fired but the clock could not move: the forced close was reached.
+  EXTENSION_CAPPED
+  AUCTION_CLOSED
+}
+
+model Rfq {
+  id        String @id @default(uuid())
+  /// Human-facing reference, e.g. RFQ-2026-014. Unique so it can be quoted in
+  /// an email and looked up.
+  reference String @unique
+  name      String
+
+  bidStartAt  DateTime
+  /// Moves when the auction extends. The current close, not the original one.
+  bidCloseAt  DateTime
+  /// The ceiling. Never changes, and bidCloseAt may never pass it.
+  forcedCloseAt DateTime
+  pickupDate  DateTime
+
+  britishAuction Boolean @default(true)
+
+  /// X: how many minutes before the close count as the trigger window.
+  triggerWindowMinutes Int @default(10)
+  /// Y: how many minutes an extension adds.
+  extensionMinutes     Int @default(5)
+  trigger              ExtensionTrigger @default(L1_CHANGE)
+
+  status AuctionStatus @default(SCHEDULED)
+
+  /// The close time the auction was created with. Kept so the details page can
+  /// show how much the auction moved in total, which is the metric the brief
+  /// asks about ("improved final prices compared to non-extended auctions").
+  originalCloseAt DateTime
+
+  bids   Bid[]
+  events AuctionEvent[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, bidCloseAt])
+}
+
+model Supplier {
+  id    String @id @default(uuid())
+  name  String
+  email String @unique
+  bids  Bid[]
+}
+
+model Bid {
+  id         String   @id @default(uuid())
+  rfq        Rfq      @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  rfqId      String
+  supplier   Supplier @relation(fields: [supplierId], references: [id])
+  supplierId String
+
+  carrierName         String
+  freightCharges      Decimal @db.Decimal(12, 2)
+  originCharges       Decimal @db.Decimal(12, 2)
+  destinationCharges  Decimal @db.Decimal(12, 2)
+  /// The sum, stored rather than computed on read. Ranking orders by it on
+  /// every bid, and a stored column can carry an index; recomputing it in SQL
+  /// on each read cannot.
+  totalAmount         Decimal @db.Decimal(12, 2)
+
+  transitTimeDays Int
+  validUntil      DateTime
+
+  /// Set when a later bid from the same supplier supersedes this one. A
+  /// supplier's live quote is their one row where this is false, which keeps
+  /// ranking a simple indexed query instead of a per-supplier "latest" scan.
+  superseded Boolean @default(false)
+
+  placedAt DateTime @default(now())
+
+  events AuctionEvent[]
+
+  @@index([rfqId, superseded, totalAmount])
+  @@index([rfqId, placedAt])
+}
+
+model AuctionEvent {
+  id    String    @id @default(uuid())
+  rfq   Rfq       @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  rfqId String
+  type  EventType
+
+  bid   Bid?    @relation(fields: [bidId], references: [id])
+  bidId String?
+
+  /// Why this happened, in words, written at the moment it happened. The brief
+  /// asks for "reason for each extension" and a reason reconstructed later from
+  /// timestamps is a guess.
+  reason String
+
+  previousCloseAt DateTime?
+  newCloseAt      DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([rfqId, createdAt])
+}
